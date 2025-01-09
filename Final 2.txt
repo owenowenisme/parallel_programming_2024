@@ -1,0 +1,61 @@
+#include <bits/stdc++.h>
+#include <omp.h>
+
+using namespace std;
+
+int main() {
+  int thread_count = omp_get_num_threads();
+
+  string filename;
+  cin >> filename;
+
+  ifstream fin(filename);
+  int n;
+  fin >> n;
+
+  vector<vector<int>> w(n, vector<int>(n));
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < n; ++j) {
+      fin >> w[i][j];
+    }
+  }
+
+  vector<int> dist(w[0]);
+  vector<bool> vis(n, false);
+  vis[0] = true;
+
+  while (true) {
+    vector<int> loc_u(thread_count, -1);
+#pragma omp num_thread(thread_count) parallel for 
+    for (int i = 0; i < n; ++i) {
+      int rank = omp_get_thread_num();
+      if (!vis[i] && (loc_u[rank] == -1 || dist[i] < dist[loc_u[rank]])) {
+        loc_u[rank] = i;
+      }
+    }
+
+    int u = -1;
+    for (int i = 0; i < thread_count; ++i) {
+      if (loc_u[i] == -1) continue;
+      if (u == -1 || dist[loc_u[i]] < dist[u]) {
+        u = loc_u[i];
+      }
+    }
+
+    if (u == -1) break;
+    vis[u] = true;
+
+#pragma omp num_thread(thread_count) parallel for
+    for (int i = 0; i < n; ++i) {
+      if (!vis[i] && w[u][i] != 0 && dist[i] > dist[u] + w[u][i]) {
+        dist[i] = dist[u] + w[u][i];
+      }
+    }
+  }
+
+  for (int i = 0; i < n; ++i) {
+    cout << dist[i] << ' ';
+  }
+
+  return 0;
+}
